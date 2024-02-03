@@ -1,8 +1,7 @@
-import numpy as np
-import matplotlib.pyplot as plt
-from tqdm import tqdm
-import gsw
 import math
+import gsw
+import matplotlib.pyplot as plt
+import numpy as np
 
 """
 密度计算参数
@@ -15,7 +14,7 @@ beta = 0.83
 gamma = np.array([0, 0.1])
 max_speed = 2.5  # 最大速度，单位为米每秒(m/s)
 sub_mass = 21000  # 潜水器的最大质量，单位为千克(kg)
-max_water_onboard = 5000  # 潜水器最大携带水量，单位为千克(kg)
+max_water_onboard = 2500  # 潜水器最大携带水量，单位为千克(kg)
 sub_volume = 23.0  # 潜水器的体积，单位为立方米(m^3)
 
 g = 9.81  # 重力加速度，单位为米每秒平方(m/s^2)
@@ -57,8 +56,6 @@ class Submersible:
         self.speed[2] = self.speed[2] + self.acceleration_z * dt
         self.mass = _mass  # 更新潜水器的质量，待做
 
-    # def cal_speed_oc(self, _speed_oc):
-
 
 class Environment:
     """
@@ -93,6 +90,28 @@ class Environment:
         self.pressure = _pressure
 
 
+def cal_neutral_buoyancy(env, sub):
+    """
+    计算潜水器的中性浮力深度
+    :param env: 环境
+    :param sub: 潜水器
+    :return: 潜水器的中性浮力
+    """
+    # 读取环境参数
+    temperature = env.temperature
+    salinity = env.salinity
+    pressure = env.pressure
+    # 读取潜水器参数
+    volume = sub.volume
+    mass = sub.mass
+    water = sub.water
+    # 计算海水密度
+    density = gsw.rho(temperature, salinity, pressure)
+    # 计算潜水器的中性浮力深度
+    neutral_buoyancy = (mass + water) / (density * volume)
+    return neutral_buoyancy
+
+
 def cal_acc(env, sub):
     """
     模拟潜水器的运动
@@ -104,32 +123,25 @@ def cal_acc(env, sub):
     temperature = env.temperature
     salinity = env.salinity
     pressure = env.pressure
-
     # 读取潜水器参数
     sub_m = sub.mass
     water = sub.water
     mass = sub_m + water  # 潜水器的质量，单位为千克(kg)
     volume = sub.volume
-
     # 计算海水密度
     density = gsw.rho(temperature, salinity, pressure)
-
     # 计算海水对潜水器的浮力
     buoyancy = density * 9.8 * volume
-
     # 计算海水对潜水器的阻力
     # 形状阻力
     Cd = 0.0475  # 潜水器的阻力系数
     viscous_drag = 0.5 * Cd * density * 2 * math.pi * (math.sqrt(3 * sub.volume / (4 * math.pi))) ** 3 * sub.speed[
         2] ** 2
     # print("viscous_drag {}".format(viscous_drag))
-
     # 计算潜水器的重力
     gravity = mass * g
-
     # 计算潜水器的垂直加速度
     acceleration = (gravity - buoyancy - viscous_drag) / mass
-
     return acceleration
 
 
@@ -144,20 +156,15 @@ def cal_speed_oc(env, sub):
     speed_oc = env.speed_oc
     latitude = env.latitude
     la = np.random.uniform(latitude[0], latitude[1])
-
     # 读取潜水器参数
     depth = sub.position[2]
-
     # 计算科里奥利力
     f = 2 * 7.292e-5 * math.sin(la)
-
     # 计算科里奥利力对潜水器的影响
     Az = np.array([10e-6, 10e-5])
     Az = np.random.uniform(Az[0], Az[1])
     DE = math.pi * math.sqrt(2 * Az / abs(f))
-
     theta = math.atan2(speed_oc[1], speed_oc[0])
-
     speed_oc[0] = env.speed_oc[0] * math.cos(theta + (math.pi / DE) * (-depth)) * math.e ** (math.pi * (-depth) / DE)
     speed_oc[1] = env.speed_oc[1] * math.sin(theta + (math.pi / DE) * (-depth)) * math.e ** (math.pi * (-depth) / DE)
     return speed_oc
@@ -190,14 +197,16 @@ def emulate_once(env, sub, dt):
 
     delta_h = abs(depth_2 - depth_1)  # 潜水器的垂直位移
     pressure = env.pressure  # 读取环境的压力
-    pressure += (gsw.rho(env.temperature, env.salinity, pressure) * 9.8 * delta_h) / 10e4
+    pressure += (gsw.rho(env.temperature, env.salinity, pressure) * g * delta_h) / 10e4
 
     # 更新环境的状态
     env.update_env(pressure)
-    # print("pressure {}".format(pressure))
+    print("pressure {}".format(pressure))
 
 
-def emulate(start_depth=0.0, target_depth=5000.0):
+def emulate(start_depth=0, target_depth=5000):
+    start_depth = start_depth * 1.0
+    target_depth = target_depth * 1.0
     # 初始化环境
     _speed_oc = np.array([2.0, 2.0])  # 定义最大海水流速，单位为米每秒(m/s)
     speed_oc = _speed_oc.copy()
@@ -206,15 +215,13 @@ def emulate(start_depth=0.0, target_depth=5000.0):
     speed_oc[1] = np.random.uniform(-speed_oc[1], speed_oc[1])
     temp_range = np.array([0.0, 3.0])  # 温度范围，单位为摄氏度(℃)
     temperature = np.random.uniform(temp_range[0], temp_range[1])  # 温度，单位为摄氏度(℃)
-    salinity = 37.0  # 盐度，单位为千分比(PPT)
+    salinity = np.random.normal(37.0, 0.01)  # 盐度，单位为千分比(PPT)
     pressure = 10.0  # 初始压力，单位为dbar
     latitude = np.array([36.5, 40.0])  # 定义潜水器的运动区域
     env_Ionian = Environment(speed_oc, temperature, salinity, pressure, latitude)
-
     # 初始化潜水器
     sub = Submersible(np.array([0.0, 0.0, start_depth]), np.array([0.0, 0.0, 0.0]), sub_mass, sub_volume,
                       max_water_onboard)
-
     time = 0.0  # 时间，单位为秒(s)
     while sub.position[2] <= target_depth:
         if sub.position[2] <= 5:
@@ -224,31 +231,6 @@ def emulate(start_depth=0.0, target_depth=5000.0):
         emulate_once(env_Ionian, sub, dt)
         time += dt
     return sub.position
-    # print("Time ", time, " Position ", sub.position, " speed ", sub.speed, " acc ", sub.acceleration_z, " m ",
-    # sub.mass)
-
-    # sub.position_history = sub.position_history[::-1]
-    # print(np.array(sub.position_history))
-
-    # 将position_history输出为csv文件
-    # with open('./source/history.csv', 'w') as f:
-    #     for item in sub.position_history:
-    #         f.write(str(item[0]) + ',' + str(item[1]) + ',' + str(item[2]) + '\n')
-
-    # 将潜水器的运动轨迹可视化
-    # fig = plt.figure()
-    # ax = fig.add_subplot(111, projection='3d')
-    # for item in sub.position_history:
-    #     ax.scatter(item[0], item[1], -item[2], c='r')
-    #
-    # ax.set_xlabel('X')
-    # ax.set_ylabel('Y')
-    # ax.set_zlabel('Z')
-    # # 固定显示的坐标轴范围
-    # ax.set_xlim(-5, 5)
-    # ax.set_ylim(-5, 5)
-    # ax.set_zlim(-3000, 2)
-    # plt.show()
 
 
 def main():
@@ -280,8 +262,8 @@ def main():
         emulate_once(env_Ionian, sub, dt)
         time += dt
     # return sub.position
-    print("Time ", time, " Position ", sub.position, " speed ", sub.speed, " acc ", sub.acceleration_z, " m ",
-          sub.mass)
+        print("Time ", time, " Position ", sub.position, " speed ", sub.speed, " acc ", sub.acceleration_z, " m ",
+              sub.mass)
 
     # sub.position_history = sub.position_history[::-1]
     print(np.array(sub.position_history))
@@ -304,7 +286,7 @@ def main():
     # ax.set_xlim(-5, 5)
     # ax.set_ylim(-5, 5)
     # ax.set_zlim(-3000, 2)
-    plt.show()
+    # plt.show()
 
 
 if __name__ == '__main__':
