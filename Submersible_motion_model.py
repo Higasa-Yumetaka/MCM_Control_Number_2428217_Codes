@@ -47,12 +47,12 @@ class Submersible:
         self.position_history = []
 
     def update_sub(self, _acceleration, _mass, _speed_oc, dt):
-        self.acceleration_z = np.random.normal(_acceleration, 0.1)  # _acceleration
-        self.position[0] += self.speed[0] * dt
-        self.position[1] += self.speed[1] * dt
+        self.acceleration_z = np.random.normal(_acceleration, 0.3)  # _acceleration
+        self.position[0] += self.speed[0] * dt + np.random.normal(0, 1)  # _speed_oc[0]
+        self.position[1] += self.speed[1] * dt + np.random.normal(0, 1)  # _speed_oc[1]
         self.position[2] += self.speed[2] * dt + 0.5 * self.acceleration_z * dt * dt
-        self.speed[0] = np.random.normal(_speed_oc[0], 0.02)  # _speed_oc[0]
-        self.speed[1] = np.random.normal(_speed_oc[0], 0.02)  # _speed_oc[1]
+        self.speed[0] = np.random.normal(_speed_oc[0], 1)  # _speed_oc[0]
+        self.speed[1] = np.random.normal(_speed_oc[0], 1)  # _speed_oc[1]
         # self.speed[2] = min(self.speed[2] + self.acceleration_z * dt, max_speed)
         self.speed[2] = self.speed[2] + self.acceleration_z * dt
         self.mass = _mass  # 更新潜水器的质量，待做
@@ -118,7 +118,7 @@ def cal_acc(env, sub):
     buoyancy = density * 9.8 * volume
 
     # 计算海水对潜水器的阻力
-    # 粘性阻力
+    # 形状阻力
     Cd = 0.0475  # 潜水器的阻力系数
     viscous_drag = 0.5 * Cd * density * 2 * math.pi * (math.sqrt(3 * sub.volume / (4 * math.pi))) ** 3 * sub.speed[
         2] ** 2
@@ -197,7 +197,7 @@ def emulate_once(env, sub, dt):
     # print("pressure {}".format(pressure))
 
 
-def emulate(target_depth=5000.0):
+def emulate(start_depth=0.0, target_depth=5000.0):
     # 初始化环境
     _speed_oc = np.array([2.0, 2.0])  # 定义最大海水流速，单位为米每秒(m/s)
     speed_oc = _speed_oc.copy()
@@ -212,29 +212,28 @@ def emulate(target_depth=5000.0):
     env_Ionian = Environment(speed_oc, temperature, salinity, pressure, latitude)
 
     # 初始化潜水器
-    sub = Submersible(np.array([0.0, 0.0, 0.0]), np.array([0.0, 0.0, 0.0]), sub_mass, sub_volume, max_water_onboard)
+    sub = Submersible(np.array([0.0, 0.0, start_depth]), np.array([0.0, 0.0, 0.0]), sub_mass, sub_volume,
+                      max_water_onboard)
 
-    dt = 0.1  # 时间片，单位为秒(s)
     time = 0.0  # 时间，单位为秒(s)
-    while sub.position[2] < 5.0:
-        emulate_once(env_Ionian, sub, dt)  # 模拟潜水器的运动（单个时间片）
-        time += dt
-        print("Time ", time, " Position ", sub.position, " speed ", sub.speed, " acc ", sub.acceleration_z, " m ",
-              sub.mass)
-    dt = 2.0
-    while sub.position[2] < target_depth:
+    while sub.position[2] <= target_depth:
+        if sub.position[2] <= 5:
+            dt = 0.1
+        else:
+            dt = 2.0
         emulate_once(env_Ionian, sub, dt)
         time += dt
-        print("Time ", time, " Position ", sub.position, " speed ", sub.speed, " acc ", sub.acceleration_z, " m ",
-              sub.mass)
+    return sub.position
+    # print("Time ", time, " Position ", sub.position, " speed ", sub.speed, " acc ", sub.acceleration_z, " m ",
+    # sub.mass)
 
     # sub.position_history = sub.position_history[::-1]
-    print(np.array(sub.position_history))
+    # print(np.array(sub.position_history))
 
     # 将position_history输出为csv文件
-    with open('./source/history.csv', 'w') as f:
-        for item in sub.position_history:
-            f.write(str(item[0]) + ',' + str(item[1]) + ',' + str(item[2]) + '\n')
+    # with open('./source/history.csv', 'w') as f:
+    #     for item in sub.position_history:
+    #         f.write(str(item[0]) + ',' + str(item[1]) + ',' + str(item[2]) + '\n')
 
     # 将潜水器的运动轨迹可视化
     # fig = plt.figure()
@@ -252,5 +251,61 @@ def emulate(target_depth=5000.0):
     # plt.show()
 
 
+def main():
+    # 初始化环境
+    start_depth = 0.0
+    target_depth = 5000.0
+    _speed_oc = np.array([2.0, 2.0])  # 定义最大海水流速，单位为米每秒(m/s)
+    speed_oc = _speed_oc.copy()
+    # 对海水流速进行初始随机扰动
+    speed_oc[0] = np.random.uniform(-speed_oc[0], speed_oc[0])
+    speed_oc[1] = np.random.uniform(-speed_oc[1], speed_oc[1])
+    temp_range = np.array([0.0, 3.0])  # 温度范围，单位为摄氏度(℃)
+    temperature = np.random.uniform(temp_range[0], temp_range[1])  # 温度，单位为摄氏度(℃)
+    salinity = 37.0  # 盐度，单位为千分比(PPT)
+    pressure = 10.0  # 初始压力，单位为dbar
+    latitude = np.array([36.5, 40.0])  # 定义潜水器的运动区域
+    env_Ionian = Environment(speed_oc, temperature, salinity, pressure, latitude)
+
+    # 初始化潜水器
+    sub = Submersible(np.array([0.0, 0.0, start_depth]), np.array([0.0, 0.0, 0.0]), sub_mass, sub_volume,
+                      max_water_onboard)
+
+    time = 0.0  # 时间，单位为秒(s)
+    while sub.position[2] <= target_depth:
+        if sub.position[2] <= 5:
+            dt = 0.1
+        else:
+            dt = 2.0
+        emulate_once(env_Ionian, sub, dt)
+        time += dt
+    # return sub.position
+    print("Time ", time, " Position ", sub.position, " speed ", sub.speed, " acc ", sub.acceleration_z, " m ",
+          sub.mass)
+
+    # sub.position_history = sub.position_history[::-1]
+    print(np.array(sub.position_history))
+
+    # 将position_history输出为csv文件
+    with open('./source/history.csv', 'w') as f:
+        for item in sub.position_history:
+            f.write(str(item[0]) + ',' + str(item[1]) + ',' + str(item[2]) + '\n')
+
+    # 将潜水器的运动轨迹可视化
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    for item in sub.position_history:
+        ax.scatter(item[0], item[1], -item[2], c='r')
+
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+    # 固定显示的坐标轴范围
+    # ax.set_xlim(-5, 5)
+    # ax.set_ylim(-5, 5)
+    # ax.set_zlim(-3000, 2)
+    plt.show()
+
+
 if __name__ == '__main__':
-    emulate()
+    main()
