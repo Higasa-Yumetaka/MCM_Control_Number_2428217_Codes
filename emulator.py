@@ -1,8 +1,13 @@
+"""
+潜水器运动模型仿真
+运行本程序以生成epoch次数的潜水器运动的最终位置
+"""
+
 import Submersible_motion_model
 from tqdm import tqdm
 import csv
 
-epochs = 20000
+epochs = 200
 
 position_history = []
 for epoch in tqdm(range(epochs)):
