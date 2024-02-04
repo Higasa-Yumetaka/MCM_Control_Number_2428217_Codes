@@ -7,7 +7,7 @@ import Submersible_motion_model
 from tqdm import tqdm
 import csv
 
-epochs = 200
+epochs = 20000
 
 position_history = []
 for epoch in tqdm(range(epochs)):
