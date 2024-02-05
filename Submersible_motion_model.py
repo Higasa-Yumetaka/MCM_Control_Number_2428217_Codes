@@ -58,8 +58,6 @@ class Submersible:
 
     def update_sub(self, _acceleration, _mass, _speed_oc, dt):
         self.acceleration_z = np.random.normal(_acceleration, abs(0.2 * _acceleration))
-        # self.speed[0] = np.random.normal(_speed_oc[0], abs(0.5 * _speed_oc[0]))  # _speed_oc[0]
-        # self.speed[1] = np.random.normal(_speed_oc[0], abs(0.5 * _speed_oc[1]))  # _speed_oc[1]
         self.position[0] += self.speed[0] * dt + np.random.normal(0, 1)  # _speed_oc[0]
         self.position[1] += self.speed[1] * dt + np.random.normal(0, 1)  # _speed_oc[1]
         self.position[2] += self.speed[2] * dt + 0.5 * self.acceleration_z * dt * dt
@@ -231,8 +229,8 @@ def emulate_once(env, sub, dt):
     env.update_env(pressure)
 
 
-def emulate(start_depth=0, target_depth=5000, button=-math.inf):
-    start_depth = start_depth * 1.0
+def emulate(start_position=np.array([0, 0, 0]), target_depth=5000):
+    start_position = start_position * 1.0
     target_depth = target_depth * 1.0
     # 初始化环境
     _speed_oc = np.array([2.0, 2.0])  # 定义最大海水流速，单位为米每秒(m/s)
@@ -247,7 +245,7 @@ def emulate(start_depth=0, target_depth=5000, button=-math.inf):
     latitude = np.array([36.5, 40.0])  # 定义潜水器的运动区域
     env_Ionian = Environment(speed_oc, temperature, salinity, pressure, latitude)
     # 初始化潜水器
-    sub = Submersible(np.array([0.0, 0.0, start_depth]), np.array([0.0, 0.0, 0.0]), sub_mass, sub_volume,
+    sub = Submersible(start_position, np.array([0.0, 0.0, 0.0]), sub_mass, sub_volume,
                       water_onboard)
     # 计算中性浮力深度
 
@@ -316,10 +314,10 @@ def main():
     ax.set_ylabel('Y')
     ax.set_zlabel('Z')
     # 固定显示的坐标轴范围
-    # ax.set_xlim(-5, 5)
-    # ax.set_ylim(-5, 5)
-    # ax.set_zlim(-3000, 2)
-    # plt.show()
+    ax.set_xlim(-500, 500)
+    ax.set_ylim(-500, 500)
+    ax.set_zlim(-3000, 2)
+    plt.show()
 
 
 if __name__ == '__main__':
