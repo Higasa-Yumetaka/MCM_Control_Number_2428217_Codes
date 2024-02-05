@@ -1,3 +1,9 @@
+"""Performs a 2D kernel density estimation (KDE) on the position history data of a single submersible obtained from a
+CSV file.
+It aims to find the point with the maximum density, representing the most probable location of the
+submersible.
+:Input: A CSV file containing the position data of monte carlo simulation; Output: A 2D kernel density
+estimation plot with the maximum density point marked"""
 import csv
 
 import numpy as np
@@ -10,25 +16,28 @@ with open('./source/position_history/disturb_单潜水器-2万点.csv', 'r') as 
     position_history = list(reader)
     position_history = np.array(position_history).astype(float)
 
+# delete the row that is all 0, because it is error data
+position_history = position_history[~np.all(position_history == 0, axis=1)]
 position = position_history[:][:, 0:2]  # 取二维数据
 
-# 分别寻找x和y的最大最小值
+# Find the maximum and minimum values of x and y
 max_values = np.max(position, axis=0)
 min_values = np.min(position, axis=0)
 
-# 计算核密度估计
+# Compute Kernel Density Estimate
 kde = gaussian_kde(position.T)
+print("Have done kde")
 
 scale = 0.7
 
-# 生成坐标网格
-x, y = np.mgrid[scale * min(min_values): scale * max(max_values):1, scale * min(min_values): scale * max(max_values):1]
+# Generate coordinate grid
+x, y = np.mgrid[-550:1260:1, -560: 1255:1]
 positions = np.vstack([x.ravel(), y.ravel()])
 
-# 计算在每个坐标点上的核密度估计值
+# Calculate the kernel density estimate at each coordinate point
 z = np.reshape(kde(positions).T, x.shape)
 
-# 寻找密度最大的点
+# Find the point with the highest density
 max_density_point = np.unravel_index(np.argmax(z), z.shape)
 max_density_coordinates = (x[max_density_point], y[max_density_point])
 
@@ -38,26 +47,26 @@ print(max_density_coordinates)
 
 def get_max_density_coordinates():
     """
-    使用核密度估计寻找最大密度点，即最可能的潜水器位置
-    :return: 最大密度点的坐标
+    Use kernel density estimation to find the maximum density point, i.e., the most likely submersible location
+    :return: The coordinates of the maximum density point
     """
     return max_density_coordinates
 
 
 def main():
-    # 绘制等高线图
-    plt.contourf(x, y, z, cmap="viridis", levels=20)  # 调整levels以改变等高线数量
-    plt.colorbar(label='Density')  # 添加颜色条
+    # Draw a contour map
+    plt.contourf(x, y, z, cmap="viridis", levels=20)
+    plt.colorbar(label='Density')
 
-    # 绘制散点图
+    # Drawing a scatter plot
+    # It will obscure the density plot
     # plt.scatter(position[:, 0], position[:, 1], s=5, color="white", alpha=0.5)
 
-    # 绘制最大密度点
+    # Plot maximum density point
     plt.scatter(*max_density_coordinates, color="red", marker="o", label="Max Density Point")
 
     plt.legend()
-    # plt.title('2D Kernel Density Estimation')
-    fileName = '鲁棒性分析-异常.svg'
+    fileName = 'd_KDE.svg'
     plt.xlabel('X-axis')
     plt.ylabel('Y-axis')
     plt.savefig(fileName)

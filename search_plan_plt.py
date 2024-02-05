@@ -1,36 +1,33 @@
+"""
+Display search options by plotting the search path.
+"""
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import quad
 from tqdm import tqdm
-import csv
-
-with open('三潜水器.csv', 'r') as csvfile:
-    reader = csv.reader(csvfile)
-    position_history = list(reader)
-    position_history = np.array(position_history).astype(float)
 
 
-# 确定搜救船只数量，绘制轨迹图
+# Number of search and rescue vessels
 number = 1  # number<R/(2*r)
 
 t_sum = np.zeros(number)
 n_min = 0
 
 for n in tqdm(range(1, number + 1)):
-    # 搜索半径
+    # search radius
     R = 500
-    # 确定声纳半径
-    r = 0.1
-    # 定义螺旋线的参数
-    a = 2 * r * n  # 螺旋线的线圈间距参数
-    b = 0.5  # 螺旋线半径增长率feedingRateLamprey
-    # 定义螺旋线的范围
-    theta = np.linspace(0, (R - a) / b, 100000)  # 满足半径200，100000个点
+    # sonar radius
+    r = 5
+    # Parameters that define the spiral
+    a = 2 * r * n  # Coil spacing of spiral
+    b = 3  # spiral radius growth rate
+    # Define the extent of the spiral
+    theta = np.linspace(0, (R - a) / b, 100000)
     distance = a + b * theta
-    # 定义弧长积分表达式
-    dr_dtheta = b  # 螺线导数
+    # Define arc length integral expression
+    dr_dtheta = b  # Spiral derivative
     arc_length_expression = lambda theta: np.sqrt((a + b * theta) ** 2 + dr_dtheta ** 2)
-    # 计算弧长
+    # Calculate arc length
     arc_length, _ = quad(arc_length_expression, 0, (R - a) / b)
 
     for i in range(1, n + 1):
@@ -41,9 +38,9 @@ for n in tqdm(range(1, number + 1)):
     plt.show()
     plt.waitforbuttonpress(0)
 
-    # 计算扫描时间
-    depth = np.linspace(3000, 50000, int(arc_length / (2 * a) + 1))  # 深度!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    t_per = depth / 750. + 300  # 每个点声速传播
+    # Calculate scan time
+    depth = np.linspace(3000, 50000, int(arc_length / (2 * a) + 1))  # Depth
+    t_per = depth / 750. + 300  # The speed of sound propagates at every point
     v = 6
     t_sum[n - 1] = arc_length / v + np.sum(t_per)
 

@@ -1,51 +1,56 @@
 """
-建立潜水器物理模型和环境模型，模拟潜水器在海洋中的运动
-运行本程序以模拟单次潜水器的运动
+Establish a physical model and environmental model of the submersible to simulate the movement of the submersible in the ocean
+Run this program to simulate the motion of a single submersible
 """
 
 import math
+
 import gsw
 import matplotlib.pyplot as plt
 import numpy as np
-from SALib.sample import saltelli
-from SALib.analyze import sobol
 
-"""
-密度计算参数
-a: 温度对密度的影响参数
-b: 盐度对密度的影响参数
-c: 深度对密度的影响参数
-"""
 alpha = np.array([0.15, 0.8])
 beta = 0.83
 gamma = np.array([0, 0.1])
-max_speed = 2.5  # 最大速度，单位为米每秒(m/s)
-sub_mass = 21000.0  # 潜水器的最大质量，单位为千克(kg)
+max_speed = 2.5  # Maximum speed in meters per second (m/s)
+sub_mass = 21000.0  # The maximum mass of the submersible, in kilograms (kg)
 """
-在sub_mass = 21000(kg)的，潜水器的体积为23立方米(m^3)的情况下，
-，潜水器携带水量为2350千克(kg)时可以达到的最大深度(中性浮力点)约为5000米(m)
+In the case of sub_mass = 21000 (kg) and the volume of the submersible is 23 cubic meters (m^3),
+, the maximum depth (neutral buoyancy point) that 
+the submersible can reach when it carries 2350 kilograms (kg) of water is about 5000 meters (m)
 """
-max_water_onboard = 5000  # 潜水器最大携带水量，单位为千克(kg)
+max_water_onboard = 5000  # The maximum amount of water the submersible can carry, in kilograms (kg)
 water_onboard = 2350.0
-sub_volume = 23.0  # 潜水器的体积，单位为立方米(m^3)
+sub_volume = 23.0  # The volume of the submersible in cubic meters (m^3)
 
-g = 9.81  # 重力加速度，单位为米每秒平方(m/s^2)
+g = 9.81  # Acceleration due to gravity in meters per second squared (m/s^2)
+# In this model, we assumed that the acceleration due to gravity is constant
 
 
 class Submersible:
     """
-    对潜水器的运动模型：
+    Kinematic model of the submersible:
+
     position:
-    采用三维笛卡尔坐标系(x,y,z)描述潜艇的位置，其中(x,y)平面为水平面，z轴为垂直于水平面的方向，单位为米(m)
-    (x,y)轴正方向为由潜水器的初始位置指向西北方位，z轴正方向为由海平面指向海底
+    The three-dimensional Cartesian coordinate system (x, y, z) is used to describe the position of the submarine,
+    where the (x, y) plane is the horizontal plane, the z-axis is the direction perpendicular to the horizontal plane,
+    and the unit is meters (m)
+    The positive direction of the (x, y) axis is from the initial position of the submersible to the northwest,
+    and the positive direction of the z axis is from the sea level to the seabed.
+
     speed_s:
-    采用三维笛卡尔坐标系中的向量(vx,vy,vz)描述潜水器的速度，其方向与位置的描述方式相同，单位为米每秒(m/s)
+    The vector (vx, vy, vz) in the three-dimensional Cartesian coordinate system is used to describe the speed of the submersible.
+    Its direction is described in the same way as its position, and the unit is meters per second (m/s).
+
     acceleration_z:
-    采用三维笛卡尔坐标系中的向量(ax,ay,az)描述潜水器在垂直方向上的加速度，其方向与位置的描述方式相同，单位为米每秒平方(m/s^2)
+    The vector (ax, ay, az) in the three-dimensional Cartesian coordinate system is used to describe the acceleration of the submersible in the vertical direction.
+    The direction is described in the same way as the position, and the unit is meters per second squared (m/s^2)
+
     mass:
-    潜水器的质量，单位为千克(kg)
+    The mass of the submersible in kilograms (kg)
+
     volume:
-    潜水器的体积，单位为立方米(m^3)
+    The volume of the submersible in cubic meters (m^3)
     """
 
     def __init__(self, _position, _speed_s, _mass, _volume, _water):
@@ -59,20 +64,20 @@ class Submersible:
 
     def update_sub(self, _acceleration, _mass, _speed_oc, dt):
         self.acceleration_z = np.random.normal(_acceleration, abs(0.2 * _acceleration))
-        self.position[0] += self.speed[0] * dt + np.random.normal(0, 1)  # _speed_oc[0]
-        self.position[1] += self.speed[1] * dt + np.random.normal(0, 1)  # _speed_oc[1]
+        self.position[0] += self.speed[0] * dt + np.random.normal(0, 1)
+        self.position[1] += self.speed[1] * dt + np.random.normal(0, 1)
         self.position[2] += self.speed[2] * dt + 0.5 * self.acceleration_z * dt * dt
-        self.speed[0] = np.random.normal(_speed_oc[0], 1)  # _speed_oc[0]
-        self.speed[1] = np.random.normal(_speed_oc[0], 1)  # _speed_oc[1]
+        self.speed[0] = np.random.normal(_speed_oc[0], 1)
+        self.speed[1] = np.random.normal(_speed_oc[0], 1)
         self.speed[2] = self.speed[2] + self.acceleration_z * dt
-        self.mass = _mass  # 更新潜水器的质量，待做
+        self.mass = _mass
 
     def update_water(self, dt, drag, buoyancy):
         """
-        更新潜水器的质量
-        :param dt: 时间间隔
-        :param drag: 阻力
-        :param buoyancy: 浮力
+        Update submersible mass to control dive speed
+        :param dt: time slice length
+        :param drag: resistance
+        :param buoyancy: buoyancy
         :return: None
         """
         delta_w = self.mass + self.water - (((self.mass + self.water) - drag - buoyancy) * dt) / (
@@ -85,22 +90,31 @@ class Submersible:
         else:
             if self.water + abs(delta_w) <= max_water_onboard:
                 self.water += abs(delta_w)
-        print("delta_w ", delta_w, " water ", self.water)
+        # print("delta_w ", delta_w, " water ", self.water)
 
 
 class Environment:
     """
-    对环境的描述：
+    Environmental parameter model:
+
     speed_oc:
-    采用而维笛卡尔坐标系中的向量(vx,vy)描述海水的流速，其方向与潜水器的水平位置描述方式相同，单位为米每秒(m/s)
+    The vector (vx, vy) in the Cartesian coordinate system is used to describe the flow velocity of seawater.
+    Its direction is described in the same way as the horizontal position of the submersible,
+    and the unit is meters per second (m/s).
+
     temperature:
-    海水的温度，单位为摄氏度(℃)
+    The temperature of seawater in degrees Celsius (℃)
+
     salinity:
-    海水的盐度，单位为千分比(PPT)
+    Salinity of seawater in parts per thousand (PPT)
+
     pressure:
-    海水对潜水器的压力，单位为dbar
+    The pressure of seawater on the submersible, in dBar
+
     position:
-    采用三维笛卡尔坐标系(x,y,z)描述潜艇的位置，其中(x,y)平面为水平面，z轴为垂直于水平面的方向，单位为米(m)
+    The three-dimensional Cartesian coordinate system (x, y, z) is used to describe the position of the submarine,
+    where the (x, y) plane is the horizontal plane,
+    the z-axis is the direction perpendicular to the horizontal plane, and the unit is meters (m)
     """
 
     def __init__(self, _speed_oc, _temperature, _salinity, _pressure, _latitude):
@@ -116,22 +130,22 @@ class Environment:
 
 def cal_neutral_buoyancy(env, sub, target_depth):
     """
-    计算潜水器的中性浮力深度
-    :param env: 环境
-    :param sub: 潜水器
-    :return: 潜水器的中性浮力
-    :param target_depth: 目标深度
+    Calculate the neutral buoyancy depth of a submersible
+    :param env: environment object
+    :param sub: submersible object
+    :param target_depth: target dive depth
+    :return: neutral buoyancy depth
     """
-    # 读取环境参数
+    # Read environment object parameters
     temperature = env.temperature
     salinity = env.salinity
     pressure = env.pressure
-    # 读取潜水器参数
+    # Read submersible object parameters
     volume = sub.volume
     mass = sub.mass + sub.water
-    # 计算海水密度
+    # Calculate seawater density
     density = gsw.rho(temperature, salinity, pressure)
-    # 计算潜水器的中性浮力深度
+    # Calculate the neutral buoyancy depth of a submersible
     density_sub = mass / volume
     for i in range(int(target_depth * 2)):
         pressure = gsw.p_from_z(-i, env.latitude)[0]
@@ -144,34 +158,35 @@ def cal_neutral_buoyancy(env, sub, target_depth):
 
 def cal_acc(env, sub):
     """
-    模拟潜水器的运动
-    :param env: 环境
-    :param sub: 潜水器
-    :return: 潜水器的垂直加速度
+    Calculate the acceleration of the submersible's descent to
+    :param env: environment object
+    :param sub: submersible object
+    :return: acceleration of the submersible's descent
     """
-    # 读取环境参数
+    # environmental parameters
     temperature = env.temperature
     salinity = env.salinity
     pressure = env.pressure
-    # 读取潜水器参数
+    # submersible parameters
     sub_m = sub.mass
     water = sub.water
-    mass = sub_m + water  # 潜水器的质量，单位为千克(kg)
+    mass = sub_m + water  # The total mass of the submersible, in kilograms (kg)
     volume = sub.volume
-    # 计算海水密度
+    # Calculate seawater density
+    # Here we use Python’s marine science library gsw to perform calculations related to the marine environment.
     density = gsw.rho(temperature, salinity, pressure)
-    # 计算海水对潜水器的浮力
+    # Calculate the buoyancy force of seawater on the submersible
     buoyancy = density * 9.8 * volume
-    # 计算海水对潜水器的阻力
-    # 形状阻力
+    # Calculate the resistance of seawater to a submersible
+    # shape resistance
     Cd = 0.0475  # 潜水器的阻力系数
     viscous_drag = 0.5 * Cd * density * 2 * math.pi * ((math.sqrt(3 * sub.volume / (4 * math.pi))) ** 3) * abs(sub.speed
                                                                                                                [2]) ** 2
     # print("viscous_drag {}".format(viscous_drag))
     # sub.update_water(dt, viscous_drag, buoyancy)
-    # 计算潜水器的重力
+    # Calculate the gravity of a submersible
     gravity = mass * g
-    # 计算潜水器的垂直加速度
+    # Calculate the vertical acceleration of the submersible
     if sub.speed[2] >= 0:
         acceleration = (gravity - buoyancy - viscous_drag) / mass
     else:
@@ -181,20 +196,20 @@ def cal_acc(env, sub):
 
 def cal_speed_oc(env, sub):
     """
-    计算洋流速度对潜水器的影响
-    :param env: 环境
-    :param sub: 潜水器
-    :return:
+    Calculate the effect of ocean current speed on a submersible
+    The calculation takes into account the influence of the Coriolis force at different latitudes
+    :param env: environment object
+    :param sub: submersible object
+    :return: ocean current speed
     """
-    # 读取环境参数
     speed_oc = env.speed_oc
     latitude = env.latitude
-    # 读取潜水器参数
+
     depth = sub.position[2]
-    # 计算科里奥利力
+    # Calculate the Coriolis force
     # print("latitude ", latitude)
     f = 2 * 7.292e-5 * math.sin(latitude)
-    # 计算科里奥利力对潜水器的影响
+    # Calculate the effect of the Coriolis force on a submersible
     Az = np.array([10e-6, 10e-5])
     Az = np.random.uniform(Az[0], Az[1])
     DE = math.pi * math.sqrt(2 * Az / abs(f))
@@ -206,10 +221,10 @@ def cal_speed_oc(env, sub):
 
 def emulate_once(env, sub, dt):
     """
-    模拟潜水器的运动
-    :param env: 环境
-    :param sub: 潜水器
-    :param dt: 时间间隔
+    Simulate the movement of a submersible
+    :param env: environment object
+    :param sub: submersible object
+    :param dt: time slice length
     :return: None
     """
     # 读取环境参数
@@ -233,26 +248,38 @@ def emulate_once(env, sub, dt):
 def emulate(_start_position=np.array([0, 0, 0]), _target_depth=5000, _speed_oc=np.array([2.0, 2.0]),
             _temp_range=np.array([0.0, 3.0]), _salinity=37.0, _pressure=10.0, _latitude=np.array([36.5, 40.0]),
             _sub_mass=21000.0, _sub_volume=23.0, _water_onboard=2350.0):
+    """
+    Simulate the movement of a submersible
+    :param _start_position: initial position
+    :param _target_depth: target dive depth
+    :param _speed_oc: ocean current speed
+    :param _temp_range: temperature range
+    :param _salinity: salinity
+    :param _pressure: atmospheric pressure
+    :param _latitude: latitude
+    :param _sub_mass: submersible mass
+    :param _sub_volume: submersible volume
+    :param _water_onboard: water carried by the submersible
+    :return: final position of the submersible
+    """
     _start_position = _start_position * 1.0
     _target_depth = _target_depth * 1.0
-    # 初始化环境
-    # _speed_oc = np.array([2.0, 2.0])  # 定义最大海水流速，单位为米每秒(m/s)
+    # Initialize environment object
     speed_oc = _speed_oc.copy()
-    # 对海水流速进行初始随机扰动
+    # Initial random perturbation of seawater velocity
     speed_oc[0] = np.random.uniform(-speed_oc[0], speed_oc[0])
     speed_oc[1] = np.random.uniform(-speed_oc[1], speed_oc[1])
-    # temp_range = np.array([0.0, 3.0])  # 温度范围，单位为摄氏度(℃)
-    temperature = np.random.uniform(_temp_range[0], _temp_range[1])  # 温度，单位为摄氏度(℃)
-    salinity = np.random.normal(_salinity, 0.1)  # 盐度，单位为千分比(PPT)
-    pressure = _pressure  # 初始压力，单位为dBar
-    latitude = np.random.uniform(_latitude[0], _latitude[1])  # 定义潜水器的运动区域
+
+    temperature = np.random.uniform(_temp_range[0], _temp_range[1])  # Temperature in degrees Celsius (℃)
+    salinity = np.random.normal(_salinity, 0.1)  # Salinity in parts per thousand (PPT)
+    pressure = _pressure  # Initial pressure in dBar
+    latitude = np.random.uniform(_latitude[0], _latitude[1])  # Define the submersible's movement area
     env_Ionian = Environment(speed_oc, temperature, salinity, pressure, latitude)
-    # 初始化潜水器
+    # Initialize submersible object
     sub = Submersible(_start_position, np.array([0.0, 0.0, 0.0]), _sub_mass, _sub_volume,
                       _water_onboard)
-    # 计算中性浮力深度
 
-    time = 0.0  # 时间，单位为秒(s)
+    time = 0.0  # Time in seconds (s)
     while sub.position[2] <= _target_depth:
         if sub.position[2] <= 5:
             dt = 0.1
@@ -266,26 +293,36 @@ def emulate(_start_position=np.array([0, 0, 0]), _target_depth=5000, _speed_oc=n
 def sensitivity(_speed_oc=2.0, _temperature=1.5,
                 _salinity=37.0, _pressure=10.0, _latitude=37.5,
                 _sub_mass=21000.0, _sub_volume=23.0, _water_onboard=2350.0):
-    # 初始化环境
+    """
+    Perform sensitivity analysis of the submersible motion model
+    :param _speed_oc: ocean current speed
+    :param _temperature: temperature
+    :param _salinity: salinity
+    :param _pressure: atmospheric pressure
+    :param _latitude: latitude
+    :param _sub_mass: submersible mass
+    :param _sub_volume: submersible volume
+    :param _water_onboard: water carried by the submersible
+    :return: distance from the start position
+    """
+
     _start_position = np.array([0, 0, 0])
     _target_depth = 5000.0
-    # _speed_oc = np.array([2.0, 2.0])  # 定义最大海水流速，单位为米每秒(m/s)
     speed_oc = np.zeros(2) * 1.0
-    # 对海水流速进行初始随机扰动
+    # Initial random perturbation of seawater velocity
     speed_oc[0] = np.random.uniform(-_speed_oc, _speed_oc)
     speed_oc[1] = np.random.uniform(-_speed_oc, _speed_oc)
-    # temp_range = np.array([0.0, 3.0])  # 温度范围，单位为摄氏度(℃)
-    temperature = _temperature * 1.0  # 温度，单位为摄氏度(℃)
-    salinity = _salinity * 1.0  # 盐度，单位为千分比(PPT)
-    pressure = _pressure * 1.0  # 初始压力，单位为dBar
-    latitude = _latitude * 1.0  # 定义潜水器的运动区域
+
+    temperature = _temperature * 1.0
+    salinity = _salinity * 1.0
+    pressure = _pressure * 1.0
+    latitude = _latitude * 1.0
     env_Ionian = Environment(speed_oc, temperature, salinity, pressure, latitude)
-    # 初始化潜水器
+    # Initialize submersible object
     sub = Submersible(_start_position * 1.0, np.array([0.0, 0.0, 0.0]), _sub_mass * 1.0, _sub_volume * 1.0,
                       _water_onboard * 1.0)
-    # 计算中性浮力深度
 
-    time = 0.0  # 时间，单位为秒(s)
+    time = 0.0
     while sub.position[2] <= _target_depth:
         if sub.position[2] <= 5:
             dt = 0.1
@@ -293,31 +330,30 @@ def sensitivity(_speed_oc=2.0, _temperature=1.5,
             dt = 2.0
         emulate_once(env_Ionian, sub, dt)
         time += dt
-    # 返回其距离start_position的距离
     return np.linalg.norm(sub.position[:2] - _start_position[2])
 
 
 def main():
-    # 初始化环境
+    # Initialize environment object
     start_depth = 0.0
     target_depth = 5000.0
-    _speed_oc = 2.0  # 定义最大海水流速，单位为米每秒(m/s)
+    _speed_oc = 2.0  # Initial ocean current speed
     speed_oc = np.zeros(2) * 1.0
-    # 对海水流速进行初始随机扰动
+    # Initial random perturbation of seawater velocity
     speed_oc[0] = np.random.uniform(-_speed_oc, _speed_oc)
     speed_oc[1] = np.random.uniform(-_speed_oc, _speed_oc)
-    temp_range = np.array([0.0, 3.0])  # 温度范围，单位为摄氏度(℃)
-    temperature = np.random.uniform(temp_range[0], temp_range[1])  # 温度，单位为摄氏度(℃)
-    salinity = 37.0  # 盐度，单位为千分比(PPT)
-    pressure = 10.0  # 初始压力，单位为dBar
-    latitude = np.array([36.5, 40.0])  # 定义潜水器的运动区域
+    temp_range = np.array([0.0, 3.0])  # Temperature range
+    temperature = np.random.uniform(temp_range[0], temp_range[1])  # Temperature in degrees Celsius (℃)
+    salinity = 37.0
+    pressure = 10.0
+    latitude = np.array([36.5, 40.0])
     env_Ionian = Environment(speed_oc, temperature, salinity, pressure, latitude)
 
-    # 初始化潜水器
+    # Initialize the submersible
     sub = Submersible(np.array([0.0, 0.0, start_depth]), np.array([0.0, 0.0, 0.0]), sub_mass, sub_volume,
                       water_onboard)
 
-    time = 0.0  # 时间，单位为秒(s)
+    time = 0.0  # Time in seconds (s)
     neutral_buoyancy = cal_neutral_buoyancy(env_Ionian, sub, target_depth)
     if neutral_buoyancy < target_depth:
         target_depth = neutral_buoyancy
@@ -336,12 +372,12 @@ def main():
     # sub.position_history = sub.position_history[::-1]
     print(np.array(sub.position_history))
 
-    # 将position_history输出为csv文件
+    # Save the position history of the submersible
     with open('./source/history.csv', 'w') as f:
         for item in sub.position_history:
             f.write(str(item[0]) + ',' + str(item[1]) + ',' + str(item[2]) + '\n')
 
-    # 将潜水器的运动轨迹可视化
+    # Plot the position history of the submersible
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     for item in sub.position_history:
@@ -350,7 +386,6 @@ def main():
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
     ax.set_zlabel('Z')
-    # 固定显示的坐标轴范围
     ax.set_xlim(-500, 500)
     ax.set_ylim(-500, 500)
     ax.set_zlim(-3000, 2)

@@ -1,3 +1,6 @@
+"""
+Perform sensitivity analysis on Monte Carlo simulations
+"""
 import numpy as np
 from SALib.analyze import sobol
 from SALib.sample import saltelli
@@ -9,7 +12,14 @@ from Submersible_motion_model import sensitivity
 
 parameters = {
     'num_vars': 8,
-    'names': ['speed_oc', 'temperature', 'salinity', 'pressure', 'latitude', 'sub_mass', 'sub_volume', 'water_onboard'],
+    'names': ['Ocean Current',
+              'Temperature',
+              'Salinity',
+              'Pressure',
+              'Latitude',
+              'Mass of Sub',
+              'Volume of Sub',
+              'Water Onboard'],
     'bounds': [(0.0, 10.0),
                (0.0, 10.0),
                (37.0, 39.0),
@@ -22,31 +32,30 @@ parameters = {
 
 param_values = saltelli.sample(parameters, 1024)
 
-# 运行模拟并获取输出
 output_values = np.zeros([param_values.shape[0]])
 
 for i in tqdm(range(param_values.shape[0])):
     output_values[i] = sensitivity(*param_values[i, :])
 
-# 进行敏感度分析
+# Perform sensitivity analysis
 sensitivity_results = sobol.analyze(parameters, output_values)
 
-# 输出敏感度结果
 print(sensitivity_results)
+
 
 sf = sensitivity_results.to_df()
 barplot(sf[0])
-plt.ylabel('Sensitivity index')
-plt.savefig('sensitivity_analysis.svg')
+plt.ylabel('Sensitivity Index')
+plt.savefig('Total_analysis.svg')
 plt.show()
 
 
 barplot(sf[1])
-plt.ylabel('Total-order index')
-plt.savefig('total_order_analysis.svg')
+plt.ylabel('Sensitivity Index')
+plt.savefig('First_order_analysis.svg')
 plt.show()
 
 barplot(sf[2])
-plt.ylabel('First-order index')
-plt.savefig('first_order_analysis.svg')
+plt.ylabel('Sensitivity Index')
+plt.savefig('Second_order_analysis.svg')
 plt.show()

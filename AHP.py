@@ -1,22 +1,27 @@
+"""
+For a given importance relationship matrix,
+use the analytic hierarchy process to calculate its weight vector
+"""
+
 import numpy as np
 
-# 构建比较矩阵
+# Build comparison matrix
 matrix = np.array([[1, 1/5, 1/3],
                    [5, 1, 2],
                    [3, 1/2, 1]])
 
-# 归一化比较矩阵
+# Normalized comparison matrix
 n = matrix.shape[0]
 
-# 计算每个标准的权重
+# Calculate the weight of each criterion
 eig_val, eig_vec = np.linalg.eig(matrix)
 max_eig_val = max(eig_val)
 max_eig_vec = eig_vec[:, list(eig_val).index(max_eig_val)]
 weights = max_eig_vec / sum(max_eig_vec)
 
-# 输出结果
+# Output results
 for i in range(n):
-    print("标准{}的权重为：{}".format(i+1, round(weights[i].real, 3)))
+    print("The weight of dimension {} 's weight: {}".format(i+1, round(weights[i].real, 3)))
 
 # calculate consistency ratio
 eigenvalues, eigenvectors = np.linalg.eig(matrix)
