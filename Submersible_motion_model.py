@@ -143,12 +143,12 @@ def cal_neutral_buoyancy(env, sub, target_depth):
     # Read submersible object parameters
     volume = sub.volume
     mass = sub.mass + sub.water
-    # Calculate seawater density
-    density = gsw.rho(temperature, salinity, pressure)
+
     # Calculate the neutral buoyancy depth of a submersible
     density_sub = mass / volume
     for i in range(int(target_depth * 2)):
-        pressure = gsw.p_from_z(-i, env.latitude)[0]
+        pressure = gsw.p_from_z(-i, env.latitude)
+        # Calculate seawater density
         density = gsw.rho(temperature, salinity, pressure)
         if density_sub < density:
             neutral_buoyancy = i
@@ -347,6 +347,7 @@ def main():
     salinity = 37.0
     pressure = 10.0
     latitude = np.array([36.5, 40.0])
+    latitude = np.random.uniform(latitude[0], latitude[1])
     env_Ionian = Environment(speed_oc, temperature, salinity, pressure, latitude)
 
     # Initialize the submersible

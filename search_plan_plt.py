@@ -17,10 +17,10 @@ for n in tqdm(range(1, number + 1)):
     # search radius
     R = 500
     # sonar radius
-    r = 5
+    r = 10
     # Parameters that define the spiral
     a = 2 * r * n  # Coil spacing of spiral
-    b = 3  # spiral radius growth rate
+    b = 10  # spiral radius growth rate
     # Define the extent of the spiral
     theta = np.linspace(0, (R - a) / b, 100000)
     distance = a + b * theta
@@ -46,4 +46,5 @@ for n in tqdm(range(1, number + 1)):
 
 N = np.arange(1, number + 1)
 plt.plot(N, t_sum)
+plt.savefig("search_plan.png")
 plt.show()
