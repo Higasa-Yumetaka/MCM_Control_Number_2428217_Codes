@@ -6,9 +6,9 @@ use the analytic hierarchy process to calculate its weight vector
 import numpy as np
 
 # Build comparison matrix
-matrix = np.array([[1, 1/5, 1/3],
+matrix = np.array([[1, 1 / 5, 1 / 3],
                    [5, 1, 2],
-                   [3, 1/2, 1]])
+                   [3, 1 / 2, 1]])
 
 # Normalized comparison matrix
 n = matrix.shape[0]
@@ -21,7 +21,7 @@ weights = max_eig_vec / sum(max_eig_vec)
 
 # Output results
 for i in range(n):
-    print("The weight of dimension {} 's weight: {}".format(i+1, round(weights[i].real, 3)))
+    print("The weight of dimension {} 's weight: {}".format(i + 1, round(weights[i].real, 3)))
 
 # calculate consistency ratio
 eigenvalues, eigenvectors = np.linalg.eig(matrix)
@@ -35,3 +35,4 @@ if cr < 0.1:
     print("Consistency check passed, CR =", round(cr, 2))
 else:
     print("Consistency check failed, CR =", round(cr, 2))
+# completed

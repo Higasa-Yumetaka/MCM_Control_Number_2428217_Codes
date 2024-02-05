@@ -48,3 +48,5 @@ N = np.arange(1, number + 1)
 plt.plot(N, t_sum)
 plt.savefig("search_plan.png")
 plt.show()
+
+# completed

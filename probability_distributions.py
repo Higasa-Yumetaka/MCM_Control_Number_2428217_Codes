@@ -38,3 +38,5 @@ plt.show()
 x = np.linspace(0, 100, 1000)
 plt.plot(x, dist_model.pdf(x))
 plt.show()
+
+# completed
