@@ -15,7 +15,7 @@ import csv
 epochs = 20000
 
 # 潜水器的数量
-submersible_number = 3
+submersible_number = 1
 
 # 每个潜水器之间的最小距离
 min_distance = 200
@@ -40,12 +40,17 @@ def random_start_position():
 
 # 指定下降的目标深度
 target_ = 5000.0
+start_positions = []
 
 position_history = []
 for _ in range(submersible_number):
     print("Epoch: ", _ + 1, " of ", submersible_number)
     start_ = random_start_position()
+    # 不断随机生成初始位置，直到所有潜水器之间的距离都大于min_distance
+    while len(start_positions) > 1 and np.min(np.linalg.norm(np.array(start_positions) - start_, axis=1)) < min_distance:
+        start_ = random_start_position()
     print("start position: ", start_)
+    start_positions.append(start_)
     for epoch in tqdm(range(epochs)):
         # 由Submersible_motion_model.emulate()方法仿真潜水器的运动
         position = Submersible_motion_model.emulate(start_,
@@ -54,7 +59,7 @@ for _ in range(submersible_number):
     print('\n')
 
 # 将所有仿真的潜水器最终位置保存至csv文件中
-with open('position_history.csv', 'w', newline='') as csvfile:
+with open('三潜水器.csv', 'w', newline='') as csvfile:
     writer = csv.writer(csvfile)
     writer.writerows(position_history)
-    print('./position_history.csv saved')
+    print('./单潜水器-2万点.csv saved')

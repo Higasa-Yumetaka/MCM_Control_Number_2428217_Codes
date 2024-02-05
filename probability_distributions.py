@@ -5,7 +5,7 @@ import csv
 
 from kde import get_max_density_coordinates
 
-with open('./position_history.csv', 'r') as csvfile:
+with open('三潜水器.csv', 'r') as csvfile:
     reader = csv.reader(csvfile)
     position_history = list(reader)
     position_history = np.array(position_history).astype(float)

@@ -3,11 +3,12 @@
 运行本程序以模拟单次潜水器的运动
 """
 
-
 import math
 import gsw
 import matplotlib.pyplot as plt
 import numpy as np
+from SALib.sample import saltelli
+from SALib.analyze import sobol
 
 """
 密度计算参数
@@ -75,7 +76,7 @@ class Submersible:
         :return: None
         """
         delta_w = self.mass + self.water - (((self.mass + self.water) - drag - buoyancy) * dt) / (
-                    max_speed - self.speed[2])
+                max_speed - self.speed[2])
         if delta_w >= 0:
             if self.water - delta_w >= 0:
                 self.water -= delta_w
@@ -188,11 +189,11 @@ def cal_speed_oc(env, sub):
     # 读取环境参数
     speed_oc = env.speed_oc
     latitude = env.latitude
-    la = np.random.uniform(latitude[0], latitude[1])
     # 读取潜水器参数
     depth = sub.position[2]
     # 计算科里奥利力
-    f = 2 * 7.292e-5 * math.sin(la)
+    # print("latitude ", latitude)
+    f = 2 * 7.292e-5 * math.sin(latitude)
     # 计算科里奥利力对潜水器的影响
     Az = np.array([10e-6, 10e-5])
     Az = np.random.uniform(Az[0], Az[1])
@@ -224,33 +225,35 @@ def emulate_once(env, sub, dt):
     sub.update_sub(acceleration, mass, speed_oc, dt)
     sub.position_history.append(sub.position.copy())
     # 计算压力值
-    pressure = gsw.p_from_z(-sub.position[2], env.latitude)[0]
+    pressure = gsw.p_from_z(-sub.position[2], env.latitude)
     # 更新环境的状态
     env.update_env(pressure)
 
 
-def emulate(start_position=np.array([0, 0, 0]), target_depth=5000):
-    start_position = start_position * 1.0
-    target_depth = target_depth * 1.0
+def emulate(_start_position=np.array([0, 0, 0]), _target_depth=5000, _speed_oc=np.array([2.0, 2.0]),
+            _temp_range=np.array([0.0, 3.0]), _salinity=37.0, _pressure=10.0, _latitude=np.array([36.5, 40.0]),
+            _sub_mass=21000.0, _sub_volume=23.0, _water_onboard=2350.0):
+    _start_position = _start_position * 1.0
+    _target_depth = _target_depth * 1.0
     # 初始化环境
-    _speed_oc = np.array([2.0, 2.0])  # 定义最大海水流速，单位为米每秒(m/s)
+    # _speed_oc = np.array([2.0, 2.0])  # 定义最大海水流速，单位为米每秒(m/s)
     speed_oc = _speed_oc.copy()
     # 对海水流速进行初始随机扰动
     speed_oc[0] = np.random.uniform(-speed_oc[0], speed_oc[0])
     speed_oc[1] = np.random.uniform(-speed_oc[1], speed_oc[1])
-    temp_range = np.array([0.0, 3.0])  # 温度范围，单位为摄氏度(℃)
-    temperature = np.random.uniform(temp_range[0], temp_range[1])  # 温度，单位为摄氏度(℃)
-    salinity = np.random.normal(37.0, 0.01)  # 盐度，单位为千分比(PPT)
-    pressure = 10.0  # 初始压力，单位为dBar
-    latitude = np.array([36.5, 40.0])  # 定义潜水器的运动区域
+    # temp_range = np.array([0.0, 3.0])  # 温度范围，单位为摄氏度(℃)
+    temperature = np.random.uniform(_temp_range[0], _temp_range[1])  # 温度，单位为摄氏度(℃)
+    salinity = np.random.normal(_salinity, 0.1)  # 盐度，单位为千分比(PPT)
+    pressure = _pressure  # 初始压力，单位为dBar
+    latitude = np.random.uniform(_latitude[0], _latitude[1])  # 定义潜水器的运动区域
     env_Ionian = Environment(speed_oc, temperature, salinity, pressure, latitude)
     # 初始化潜水器
-    sub = Submersible(start_position, np.array([0.0, 0.0, 0.0]), sub_mass, sub_volume,
-                      water_onboard)
+    sub = Submersible(_start_position, np.array([0.0, 0.0, 0.0]), _sub_mass, _sub_volume,
+                      _water_onboard)
     # 计算中性浮力深度
 
     time = 0.0  # 时间，单位为秒(s)
-    while sub.position[2] <= target_depth:
+    while sub.position[2] <= _target_depth:
         if sub.position[2] <= 5:
             dt = 0.1
         else:
@@ -260,15 +263,49 @@ def emulate(start_position=np.array([0, 0, 0]), target_depth=5000):
     return sub.position
 
 
+def sensitivity(_speed_oc=2.0, _temperature=1.5,
+                _salinity=37.0, _pressure=10.0, _latitude=37.5,
+                _sub_mass=21000.0, _sub_volume=23.0, _water_onboard=2350.0):
+    # 初始化环境
+    _start_position = np.array([0, 0, 0])
+    _target_depth = 5000.0
+    # _speed_oc = np.array([2.0, 2.0])  # 定义最大海水流速，单位为米每秒(m/s)
+    speed_oc = np.zeros(2) * 1.0
+    # 对海水流速进行初始随机扰动
+    speed_oc[0] = np.random.uniform(-_speed_oc, _speed_oc)
+    speed_oc[1] = np.random.uniform(-_speed_oc, _speed_oc)
+    # temp_range = np.array([0.0, 3.0])  # 温度范围，单位为摄氏度(℃)
+    temperature = _temperature * 1.0  # 温度，单位为摄氏度(℃)
+    salinity = _salinity * 1.0  # 盐度，单位为千分比(PPT)
+    pressure = _pressure * 1.0  # 初始压力，单位为dBar
+    latitude = _latitude * 1.0  # 定义潜水器的运动区域
+    env_Ionian = Environment(speed_oc, temperature, salinity, pressure, latitude)
+    # 初始化潜水器
+    sub = Submersible(_start_position * 1.0, np.array([0.0, 0.0, 0.0]), _sub_mass * 1.0, _sub_volume * 1.0,
+                      _water_onboard * 1.0)
+    # 计算中性浮力深度
+
+    time = 0.0  # 时间，单位为秒(s)
+    while sub.position[2] <= _target_depth:
+        if sub.position[2] <= 5:
+            dt = 0.1
+        else:
+            dt = 2.0
+        emulate_once(env_Ionian, sub, dt)
+        time += dt
+    # 返回其距离start_position的距离
+    return np.linalg.norm(sub.position[:2] - _start_position[2])
+
+
 def main():
     # 初始化环境
     start_depth = 0.0
     target_depth = 5000.0
-    _speed_oc = np.array([2.0, 2.0])  # 定义最大海水流速，单位为米每秒(m/s)
-    speed_oc = _speed_oc.copy()
+    _speed_oc = 2.0  # 定义最大海水流速，单位为米每秒(m/s)
+    speed_oc = np.zeros(2) * 1.0
     # 对海水流速进行初始随机扰动
-    speed_oc[0] = np.random.uniform(-speed_oc[0], speed_oc[0])
-    speed_oc[1] = np.random.uniform(-speed_oc[1], speed_oc[1])
+    speed_oc[0] = np.random.uniform(-_speed_oc, _speed_oc)
+    speed_oc[1] = np.random.uniform(-_speed_oc, _speed_oc)
     temp_range = np.array([0.0, 3.0])  # 温度范围，单位为摄氏度(℃)
     temperature = np.random.uniform(temp_range[0], temp_range[1])  # 温度，单位为摄氏度(℃)
     salinity = 37.0  # 盐度，单位为千分比(PPT)
