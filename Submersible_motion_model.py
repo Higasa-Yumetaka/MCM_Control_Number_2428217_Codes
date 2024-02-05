@@ -360,7 +360,7 @@ def main():
         target_depth = neutral_buoyancy
     while sub.position[2] <= target_depth:
         if sub.position[2] <= 5:
-            dt = 0.1
+            dt = 2.0
         else:
             dt = 2.0
         emulate_once(env_Ionian, sub, dt)
@@ -389,7 +389,7 @@ def main():
     ax.set_zlabel('Z')
     ax.set_xlim(-500, 500)
     ax.set_ylim(-500, 500)
-    ax.set_zlim(-3000, 2)
+    ax.set_zlim(-5000, 2)
     plt.show()
 
 
