@@ -3,7 +3,8 @@
 #### Problem B
 # Code for Task 1:
 >- [Submersible_motion_model.py](https://github.com/Higasa-Yumetaka/MCM_Control_Number_2428217_Python/blob/master/Submersible_motion_model.py)\
-> Used for dynamic simulation of a submersible in Task 1, running this file separately will simulate the descent path of a submersible.
+> Dynamic simulation of a submersible in Task 1, running this file separately will simulate the descent path of a submersible.\
+> ![submersible_motion](https://github.com/Higasa-Yumetaka/MCM_Control_Number_2428217_Python/blob/master/Pictures/predicted_path.png)
 
 # Code for Task 2:
 >- [MatLab_Codes/task2.m](https://github.com/Higasa-Yumetaka/MCM_Control_Number_2428217_Python/blob/master/MatLab_Codes/task2.m)\
